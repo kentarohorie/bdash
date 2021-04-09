@@ -126,7 +126,7 @@ export default class QueryResultChart extends React.Component<Props> {
       );
     };
 
-    const options = ["line", "scatter", "bar", "area", "pie"].map(value => {
+    const options: any[] = ["line", "bar", "area", "pie", "normal"].map(value => {
       return { value, label: value[0].toUpperCase() + value.slice(1) };
     });
     const currentOption = options.find(option => option.value === chart.type);

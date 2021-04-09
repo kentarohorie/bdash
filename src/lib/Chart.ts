@@ -36,11 +36,11 @@ export default class Chart {
 
     const gd = await Plotly.plot(div, data, layout);
     // max width of gist image in pc browser
-    const width = 600;
+    const width = 1100;
     // aspect ratio (450:700) is default of plotly.js
     // https://plot.ly/javascript/reference/#layout-width
     // https://plot.ly/javascript/reference/#layout-height
-    const height = Math.floor((width * 450) / 700);
+    const height = 300;
     return Plotly.toImage(gd, { format: "svg", width, height }).then(svg => {
       const dataURI = decodeURIComponent(svg);
       return dataURI.substr(dataURI.indexOf(",") + 1).replace(/"Open Sans"/g, "'Open Sans'");
@@ -166,5 +166,62 @@ export default class Chart {
         values: this.dataByField(this.params.y[0])
       }
     ];
+  }
+
+  // x = pv, y = cv
+  normal() {
+    return this.generateChartData().map(data => {
+      const pv_sum = data.x
+        .filter((v): v is string => typeof v === "string")
+        .map(v => parseInt(v))
+        .reduce((sum, i) => sum + i);
+      const cv_sum = data.y
+        .filter((v): v is string => typeof v === "string")
+        .map(v => parseInt(v))
+        .reduce((sum, i) => sum + i);
+
+      const m = cv_sum / pv_sum;
+      const v = (m * (1 - m)) / pv_sum;
+      const d = Math.sqrt(v);
+
+      const xmin = Math.max(0, m - d * 5);
+      const xmax = m + d * 5;
+      const step = xmax / 5000;
+      const n = Math.floor((xmax - xmin) / step);
+      const pxscale = new Array(n);
+      let i = 0;
+      while (i <= n) {
+        if (i === 0) {
+          pxscale[i] = xmin;
+        } else {
+          pxscale[i] = pxscale[i - 1] + step;
+        }
+        i++;
+      }
+
+      const y = pxscale.map(px => {
+        const ex = -((px - m) ** 2 / (2 * v));
+        return (1 / Math.sqrt(2 * v * Math.PI)) * Math.E ** ex;
+      });
+
+      const strippedX: number[] = [];
+      const strippedY: number[] = [];
+      const threshold = 0.1;
+
+      y.forEach((n, i) => {
+        if (n >= threshold) {
+          strippedX.push(pxscale[i]);
+          strippedY.push(n);
+        }
+      });
+
+      return {
+        type: "scatter",
+        x: strippedX,
+        y: strippedY,
+        name: data.name,
+        slowlegend: true
+      };
+    });
   }
 }
